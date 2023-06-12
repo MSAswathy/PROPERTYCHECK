@@ -1,0 +1,71 @@
+{simulation_start=1, simulation_end=1573, debug=yes}
+
+abstract class block
+{
+	 attributes
+	     real M;
+             series real U;
+	     block B;		% the other block
+}
+
+class big extends block
+{
+         constraints
+	      U` = ((M-1)*U + 2*B.U)/(M+1);
+
+         constructor big(M1)
+         {
+              M = M1;
+	        M >= 1;
+              U<1> = -1;   % big block starts -1
+         }
+        monitor U;
+}
+
+class small extends block
+{
+        constraints
+	      U` = ((B.M-1)*U - 2*B.M*B.U)/(B.M+1);
+
+        constructor small(M1)
+        {
+              M = M1;
+	        M >= 1;
+              U<1> = 0;     % small block starts 0
+        }
+        monitor U;
+}
+
+
+class environment {
+        attributes
+              block Small, Big;
+              series int K;
+
+        constraints
+	      Small.U > Big.U --> K` = K + 1;
+              Small.U < Big.U --> output(`K);
+	      Small.U + (M*Big.U) = Small.U` + (M*Big.U`);     %Constraint shows conservation of momentum
+	      pow(Small.U,2) + (M*pow(Big.U,2)) = pow(Small.U`,2) + (M*pow(Big.U`,2));  %Conservation of Energy
+
+        predicates
+	        output(X) :- nonvar(X), Y is X * 2,
+				    writeln(Y), abort.
+		  output(_).
+
+        constructor environment() {
+              Small = new small(1);
+              Big = new big(1000000);
+		   Small.B = Big;
+		   Big.B = Small;
+              K<1> = 0;
+        }
+	   monitor K;
+}
+$
+
+
+?- tcob2swi('block4.tcob', 'environment()').
+?- ['block4'].
+?- main(_,_,_).
+

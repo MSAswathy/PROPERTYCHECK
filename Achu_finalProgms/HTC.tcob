@@ -1,0 +1,99 @@
+{simulation_start= 2, simulation_end =100, debug =yes}
+class  plant{
+    attributes
+        series real Temp,Qac,Qd;  % Room Temperature when Air Conditioner is on
+        real Zai,Cfm,Ug,Ag,Tac;
+        real Qs,Qoc,Tset,Tout;    % Parameters of various Heat gain and AC set temprature
+
+    constraints
+       `Temp >= Tset --> Qac = 1210 * Cfm * (Tac -`Temp) *0.0315; % Heat gain when Ac on in Celcius
+       `Temp >= Tset --> Qd = Ug * Ag * (Tout-`Temp) * 0.0315; % Heat gain through the glass in Celcius
+       `Temp >= Tset --> Temp = ((1/ Zai)*(Qac + Qd + Qs + Qoc)) + `Temp;    % Dynamic Room Temperature Equation for HTc System
+       `Temp < Tset --> Temp = Tset;
+
+    constructors
+        plant(Qac1, Qd1, Qs1, Qoc1,T_rm,T_ac){
+        Cfm = 0.14;
+        Qac<1> = Qac1;
+        Qd<1>  = Qd1;
+        Qs  = Qs1;
+        Qoc = Qoc1;
+        Zai = 39.0461;
+        Ug = 2.8;
+        Ag = 2.97;
+        Tac = T_ac;
+        Temp<1> =T_rm;
+        Time = 2 --> random(24,26,Tset);
+        Time = 2 --> random(30,33,Tout);
+      }
+      monitor Temp,Tset,Tout;
+}
+
+class controller{
+    attributes
+        real Kp,Ki,Kd;
+        series real Error;
+        series real ESum;
+        series real Out;
+        plant P;
+    constraints
+       Kp>0; Kd>0; Ki>0;
+        ESum  =  Error + `ESum;
+        Out  = (Kp*Error) + (Ki*ESum) + Kd*(Error- `Error);
+    constructors
+        controller(KP,KI,KD){
+            Kp=KP; Ki=KI; Kd=KD;
+            ESum<1>  = 0;
+            Error<2> = 0;
+            Error<1> = 0;
+    }
+}
+
+class sensor{
+    attributes
+        plant P;
+        series real Output;
+    constraints
+        P.Temp=Output;
+    constructors
+        sensor(P1){ P=P1;}
+}
+
+class system{
+  attributes
+     plant P;
+     controller C;
+     sensor S;
+     real Dvalue;
+
+  constraints
+     P.Temp = C.Out;
+     C.Error`+ S.Output=Dvalue;
+     dump(P.Temp[Time]);
+   predicates
+    dump(X):- write(X),nl.
+  constructor system() {
+     P= new plant(-32.11,0.75,13.80,3.88,28,18);     %Calulated values for Heat gains for various parameter and RoomTemperature and Ac temperature
+     C= new controller(1,2.5,1);
+     S= new sensor(P);
+    Dvalue = 1;
+    }
+}
+
+$
+
+Compile
+
+?- tcob2swi('htc.tcob','system()').
+
+Load
+
+?- [htc].
+
+Run
+
+?- main(_,_).
+or if debug = yes
+? - main(_,_,_).
+
+

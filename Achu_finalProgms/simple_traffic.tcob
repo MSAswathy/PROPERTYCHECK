@@ -1,0 +1,36 @@
+{simulation_start= 2, simulation_end =200, debug=no}
+
+class trafficlight {
+      attributes
+          enum Color; 
+          series Color C;
+      constraints
+          C = 'red'  & not (`C = 'red') --> 
+                 G<0,120> C = 'red'  &  F<120> C = 'yellow';
+          C = 'green' & not (`C = 'green') --> 
+                 G<0,180> C = 'green'  &  F<180> C = 'yellow';
+          C = 'yellow' &  `C = 'red' --> 
+                 G<0,40>C = 'yellow'  &  F<40> C = 'green';
+          C = 'yellow' & `C = 'green' --> 
+                 G<0,60> C = 'yellow'  &  F<60> C = 'red';
+         dump(C);
+       predicates
+          dump(X):- write(X),nl.
+     constructor trafficlight()  { 
+            Color=['red', 'green', 'yellow']; 
+            C<1> = 'yellow'; C<2> = 'red';}
+}
+$
+$
+
+Compile
+
+?- tcob2swi('simple_traffic.tcob','trafficlight()').
+
+Load
+
+?- [simple_traffic].
+
+Run
+
+?- main(_,_).

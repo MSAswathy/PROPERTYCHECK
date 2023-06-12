@@ -1,0 +1,17 @@
+{simulation_start=2, simulation_end=10, debug=no}
+
+class fibi
+{
+       attributes
+          series int Fib;
+       constraints
+	  Fib`= `Fib + Fib;
+	  writeln(Fib);
+       constructor fibi()
+       {
+	   Fib<1> = 0;
+            Fib<2> = 1;
+        }
+}
+
+$

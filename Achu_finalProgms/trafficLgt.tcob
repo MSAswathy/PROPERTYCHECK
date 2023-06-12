@@ -1,0 +1,34 @@
+{simulation_start= 1, simulation_end= 200, debug= no}
+class trafficLgt
+{
+          attributes
+             series Color c;
+             enum Color;
+          constraints
+             c = 'red' & not (`c = 'red')-->
+                     G<0,120> c = 'red' & F<120> c = 'yellow';
+             c = 'green' & not (`c = 'green')-->
+                     G<0,180> c = 'green' & F<180> c = 'yellow';
+             c = 'yellow' & `c = 'red' -->
+                     G<0,60> c ='yellow' & F<60> c = 'green';
+             c = 'yellow' & `c = 'green' -->
+                      G<0,60> c= 'yellow' & F<60> c = 'red';
+          constructor
+              trafficLgt()
+               {
+		      Color = ['red','yellow','green'];
+		      c<1>= 'yellow';
+                      c<2> = 'red';
+
+	       }
+}
+$
+class system
+{
+  attributes
+    trafficLgt NS, EW;
+  constructors system()
+  {  NS = new trafficLgt(red,yellow,EW);
+     EW = new traffictLgt(green,yellow,NS);
+   }
+}

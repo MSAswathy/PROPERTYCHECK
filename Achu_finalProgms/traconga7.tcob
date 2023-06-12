@@ -1,0 +1,178 @@
+% TIMED AUTOMATA ENCODED IN TCOB
+% Example: Train Controller Gate:-
+%%Different states and signals are defined for Train, Controller, Gate modules inside class 'statesignal'.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Train:- It recognizes four different events: (i) approach denoting approach of the train to the gate;
+%(ii) in denoting that the train is at the gate;
+%(iii) out denoting that the train has just left the gate; and,
+%(iv) exit denoting that the train has left the gate area.
+%---------------------------------------------------------------------------------------------------------
+%Controller:-it recognizes the approach and exit events described above, together with the two events:
+%(i) lower denoting starting of the lowering of the gate; and,
+%(ii) raise denoting starting of the raising of the gate.
+%---------------------------------------------------------------------------------------------------------
+%Gate:- (i) lower denoting starting of the lowering of the gate;
+% (ii) down denoting gate closed ;
+% (iii) raise denoting starting of the raising of the gate; and
+% (iv) up denoting gate opened
+%-----------------------------------------------------------------------------------------------------------
+%Timing constraints force the train to employ at most 5 units of time to cross  the gate area,
+% with a  speed which  should allow 2 units of time to the gate to lower before the arrival of the train.
+% Analogously, the  controller should be able to react in one  unit of time to the approach of the train, and
+%  the gate should employ no more than a unit of time to completely lower or raise the gate.
+%------------------------------------------------------------------------------------------------------------
+
+{simulation_start=1, simulation_end=10, debug=yes}
+
+abstract class statesignal
+{
+	 attributes
+	     enum State, Sig ;                        % Variables for state, signal
+             series State S;
+	     series Sig Sg;
+             series real Lck;
+
+
+}
+
+class train extends statesignal
+{
+
+     constraints
+
+         S = 'S0' & Sg = 'idle'  --> S` = 'S0' & Lck = 0 ;
+         S = 'S0' & Sg = 'approach' & Time - Lck = 0 --> S` = 'S1' & Lck` = Lck ;
+         S = 'S1' & Sg = 'in' & Time - Lck > 2 --> S` = 'S2' & Lck` = Lck ;
+	 S = 'S2' & Sg = 'out' --> S` = 'S3' & Lck` = Lck ;
+	 S = 'S3' & Sg = 'exit' & Time - Lck <= 5 --> S` = 'S0' & Lck` = 0 ;
+
+         dump(S);
+         dump(Sg);
+
+     predicates
+         dump(X):- write(X),nl.
+
+     constructors train(St1,Sg1)
+      {
+
+        State = ['S0','S1','S2','S3'];
+        Sig = ['idle','approach','in','out','exit'];
+        S<1> = St1;                                    % Initial State of train
+        Sg<1> = Sg1;				       % Initial Signal of train
+        Lck<1> = 0;				       % Local time variable for train
+
+      }
+    monitor S;
+}
+
+class controller extends statesignal
+{
+
+     attributes
+         train T;                                      % Train object
+
+     constraints
+
+
+	 S = 'S0' & T.Sg = 'idle' --> S` = 'S0' & Lck = 0;
+         S = 'S0' & T.Sg = 'approach' & Time - Lck = 0 --> S` = 'S1' & Lck` = Lck;
+         S = 'S1' & Sg = 'lower' & Time - Lck <= 1 --> S` = 'S2' & Lck` = Lck ;
+         S = 'S2' & T.Sg = 'exit' & Time - Lck = 0 --> S` = 'S3' & Lck` = Lck;
+	 S = 'S3' & Sg = 'raise' & Time - Lck <= 1 --> S` = 'S0' & Lck` = 0 ;
+
+         dump(S);
+         dump(Sg);
+
+     predicates
+         dump(X):- write(X),nl.
+
+     constructors controller(CSt1,CSg1,T1)
+      {
+        State = ['S0','S1','S2','S3'];
+        Sig = ['idle','approach','exit','lower','raise'];
+        S<1> = CSt1;                                      % Initial State of controller
+        Sg<1> = CSg1;					  % Initial Signal of controller
+        Lck<1> = 0;                                        % Local time variable for controller
+        T = T1;						  % Train object is passed to controller class for synchronization
+      }
+   monitor S;
+}
+
+class gate extends statesignal
+{
+
+     attributes
+         controller Co;				     % controller object
+
+     constraints
+
+         S = 'S0' & Co.Sg = 'idle' --> S` = 'S0' & Lck = 0;
+         S = 'S0' & Co.Sg = 'lower' & Time - Lck = 0 --> S` = 'S1' & Lck` = Lck;
+         S = 'S1' & Sg = 'down' & Time - Lck <= 1 --> S` = 'S2' & Lck` = Lck ;
+         S = 'S2' & Sg = 'idle' --> S` = 'S2' & Lck` = Lck ;
+         S = 'S2' & Co.Sg = 'raise' & Time - Lck = 0 --> S` = 'S3' & Lck` = Lck ;
+	 S = 'S3' & Sg = 'up' & Time - Lck <= 2 --> S` = 'S0' & Lck` = 0 ;
+
+
+         dump(S);
+         dump(Sg);
+
+     predicates
+         dump(X):- write(X),nl.
+
+     constructors gate(GSt1,GSg1,C1)
+      {
+	State = ['S0','S1','S2','S3'];
+        Sig = ['idle', 'lower','raise','up','down'];
+        S<1> = GSt1;                           % Initial State of gate
+        Sg<1> = GSg1;			       % Initial Signal of gate
+        Lck<1> = 0;			       % Local time variable for gate
+        Co = C1;                                % Controller object is passed to gate class for synchronization
+      }
+    monitor S;
+}
+
+
+class driver
+{
+     attributes
+          statesignal Train, Cont, Gate;
+
+     constraints
+          Time = 2 --> Train.Sg = 'approach' & Train.Lck = Time & Cont.Lck = Time;
+          Time = 3 --> Cont.Sg = 'lower'  & Gate.S = `Gate.S & Gate.Lck = Time;
+          Time = 4 --> Train.S = `Train.S & Train.Lck = `Train.Lck & Gate.Sg = 'down';
+          Time = 5 --> Train.S = `Train.S  & Train.Sg = 'in' & Train.Lck = `Train.Lck & Cont.S = `Cont.S;
+          Time = 6 --> Train.Sg = 'out'  & Cont.S = `Cont.S & Gate.S = `Gate.S;
+          Time = 7 --> Train.Sg = 'exit' & Cont.S = `Cont.S & Cont.Lck = Time & Gate.S = `Gate.S;
+          Time = 8 --> Cont.Sg = 'raise' & Gate.Lck = Time & Gate.S = `Gate.S;
+          Time = 9 --> Gate.Sg = 'up';
+     predicates
+	 dump(X):- write(X),nl.
+
+     constructors driver()
+         {
+             Train = new train('S0','idle');
+             Cont = new controller('S0','idle',Train);
+	     Gate = new gate('S0','idle',Cont);
+	 }
+}
+$
+Compile
+
+?- tcob2swi('traconga7.tcob','driver()').
+
+Load
+
+?- [traconga7].
+
+Run
+
+?- main(_,_).
+or if debug = yes
+? - main(_,_,_).
+
+To visualise
+Load
+?- [core,web].
+?- run.

@@ -1,0 +1,91 @@
+{simulation_start= 2, simulation_end =100, debug =yes}
+class  plant{
+    attributes
+        series real Temp;
+        real Zai;
+        int Qac,Qd,Qs,Qoc;
+    constraints
+	Temp <= 30;
+        Temp = ((1/ Zai)*(Qac + Qd + Qs + Qoc)) + `Temp;
+
+
+    constructors
+        plant(Qac1, Qd1, Qs1, Qoc1,Temp1){
+        Qac = Qac1;
+        Qd  = Qd1;
+        Qs  = Qs1;
+        Qoc = Qoc1;
+        Zai = 39.0461;
+        Temp<1> = 25;
+
+      }
+}
+
+class controller{
+    attributes
+        real Kp,Ki,Kd;
+        series real Error;
+        series real ESum;
+        series real Out;
+        plant P;
+    constraints
+       Kp>0; Kd>0; Ki>0;
+        ESum  =  Error + `ESum;
+        Out  = (Kp*Error) + (Ki*ESum) + Kd*(Error- `Error);
+    constructors
+        controller(KP,KI,KD){
+            Kp=KP; Ki=KI; Kd=KD;
+            ESum<1>  = 0;
+            Error<2> =  0;
+            Error<1> =0;
+    }
+}
+
+class sensor{
+    attributes
+        plant P;
+        series real Output;
+    constraints
+        P.Temp=Output;
+    constructors
+        sensor(P1){ P=P1;}
+}
+
+class system{
+  attributes
+     plant P;
+     controller C;
+     sensor S;
+     real Dvalue;
+
+  constraints
+     P.Temp = C.Out;
+     C.Error`+ S.Output=Dvalue;
+     dump(P.Temp[Time]);
+   predicates
+    dump(X):- write(X),nl.
+  constructor system() {
+     P= new plant(1,1,1,1,25);
+     C= new controller(1,2.5,1);
+     S= new sensor(P);
+    Dvalue = 1;
+    }
+}
+
+$
+
+Compile
+
+?- tcob2swi('pid.tcob','system()').
+
+Load
+
+?- [pid].
+
+Run
+
+?- main(_,_).
+or if debug = yes
+? - main(_,_,_).
+
+

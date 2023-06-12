@@ -1,0 +1,244 @@
+{simulation_start= 2, simulation_end =50, debug =yes}
+abstract class sensor
+{
+	 attributes
+	     series real Output;
+}
+
+%USE OF PID CONTROLLER TO REGULATE THE AC-TEMPERATURE
+class  plant
+{
+    attributes
+        series real Temp,Qac,Qd;  % Room Temperature when Air Conditioner is on
+        real Zai,Cfm,Ug,Ag,Tac;
+        real Qs,Qoc,Tset,Tout;    % Parameters of various Heat gain and AC set temprature
+
+    constraints
+       `Temp >= Tset --> Qac = 1210 * Cfm * (Tac -`Temp) *0.0315; % Heat gain when Ac on in Celcius
+       `Temp >= Tset --> Qd = Ug * Ag * (Tout-`Temp) * 0.0315; % Heat gain through the glass in Celcius
+       `Temp >= Tset --> Temp = ((1/ Zai)*(Qac + Qd + Qs + Qoc)) + `Temp;    % Dynamic Room Temperature Equation for HTC System
+       `Temp < Tset --> Temp = Tset;
+
+    constructors   plant(Qac1, Qd1, Qs1, Qoc1,T_rm,T_ac)
+      {
+        Cfm = 0.14;
+        Qac<1> = Qac1;
+        Qd<1>  = Qd1;
+        Qs  = Qs1;
+        Qoc = Qoc1;
+        Zai = 39.0461;
+        Ug = 2.8;
+        Ag = 2.97;
+        Tac = T_ac;
+        Temp<1> =T_rm;
+        Time = 2 --> random(24,26,Tset);
+        Time = 2 --> random(30,33,Tout);
+      }
+      monitor Temp,Tset,Tout;
+}
+
+class pidcontroller
+{
+    attributes
+        real Kp,Ki,Kd;
+        series real Error;
+        series real ESum;
+        series real Out;
+        plant P;
+
+    constraints
+        Kp>0; Kd>0; Ki>0;
+        ESum  =  Error + `ESum;
+        Out  = (Kp*Error) + (Ki*ESum) + Kd*(Error- `Error);
+
+    constructors     pidcontroller(KP,KI,KD)
+       {
+            Kp=KP; Ki=KI; Kd=KD;
+            ESum<1>  = 0;
+            Error<2> = 0;
+            Error<1> = 0;
+       }
+}
+
+class tempsensor extends sensor
+{
+    attributes
+        plant P;
+
+    constraints
+        P.Temp=Output;
+
+    constructors  tempsensor(P1)
+    {
+        P=P1;
+    }
+}
+
+%USE of FUZZY CONTROLLER TO CONTROL LIGHT INTENSITY IN REAL-TIME CONDITIONS
+
+class lamp
+ {
+      attributes
+          enum Light; %Level of Brightness
+	  series Light L;
+	  series real Lux; %ILLUMINATION VALUES
+
+      constraints
+          Lux > 0;
+          Lux <= 128;
+          L = 'DIM' --> random(0, 37.9,Lux);
+          L = 'DIMLESS' --> random(38,50,Lux);
+          L = 'MEDIUM' --> random(50.1,85,Lux);
+          L = 'LIGHTLESS' --> random(85.1,98.9,Lux);
+          L = 'BRIGHT' --> random(99,128,Lux);
+
+
+      constructors lamp()
+           {
+             Light =['DIM', 'DIMLESS','MEDIUM','BRIGHT'];
+	     L<1> = 'DIM';
+             Lux<1> = 1;
+	   }
+      monitor Lux;
+}
+
+class ldrsensor extends sensor
+{
+       constraints
+	  Time > 1 --> random(3.41,4.98,Output);
+
+       constructors ldrsensor(Os)
+            {
+                Output<1> = Os;
+	    }
+       monitor Output;
+}
+
+class fuzzycontroller
+{
+       attributes
+           ldrsensor OSs, INs;
+           series real OSm;  %Fuzzy MF set SMALL for Outdoor
+	   series real OMe;  %Fuzzy MF set MEDIUM for Outdoor
+           series real OBg;  %Fuzzy MF set BIG for Outdoor
+	   series real InSm;  %Fuzzy MF set SMALL for Indoor
+           series real InMe;  %Fuzzy MF set MEDIUM for Indoor
+           series real InBg;  %Fuzzy MF set BIG for Indoor
+
+     constraints
+	  %`OSs.Output > `INs.Output;
+	  `OSs.Output <= 3.5 --> OSm = 1;
+          `OSs.Output > 3.5 & `OSs.Output <= 3.9 --> OSm = (3.9 - `OSs.Output)/(3.9 - 3.5);
+          `OSs.Output > 3.9 --> OSm = 0;       %Determining the Outdoor set Fuzzy MF SMALL
+
+          `OSs.Output <= 3.7 --> OMe =0;
+          `OSs.Output > 3.7 & `OSs.Output <= 4.1 --> OMe = (`OSs.Output - 3.7)/(4.1 - 3.7);
+          `OSs.Output > 4.1 & `OSs.Output <= 4.5 --> OMe = (4.5 - `OSs.Output)/(4.5 - 4.1);
+          `OSs.Output > 4.5 --> OMe = 0;       %Determining the Outdoor set Fuzzy MF MEDIUM
+
+          `OSs.Output <= 4.3 --> OBg = 0;
+          `OSs.Output > 4.3 & `OSs.Output <= 4.7 --> OBg = (`OSs.Output - 4.3)/(4.7 - 4.3);
+          `OSs.Output > 4.7 --> OBg = 1;       %Determining the Outdoor set Fuzzy MF BIG
+
+	  `INs.Output <= 3.5 --> InSm = 1;
+          `INs.Output > 3.5 & `INs.Output <= 3.9 --> InSm = (3.9 - `INs.Output)/(3.9 - 3.5);
+          `INs.Output > 3.9 --> InSm = 0;       %Determining the Indoor set Fuzzy MF SMALL
+
+          `INs.Output <= 3.7 --> InMe =0;
+          `INs.Output > 3.7 & `INs.Output <= 4.1 --> InMe = (`INs.Output - 3.7)/(4.1 - 3.7);
+          `INs.Output > 4.1 & `INs.Output <= 4.5 --> InMe = (4.5 - `INs.Output)/(4.5 - 4.1);
+          `INs.Output > 4.5 --> InMe = 0;       %Determining the  Indoor set Fuzzy MF MEDIUM
+
+          `INs.Output <= 4.3 --> InBg = 0;
+          `INs.Output > 4.3 & `INs.Output <= 4.7 --> InBg = (`INs.Output - 4.3)/(4.7 - 4.3);
+          `INs.Output > 4.7 --> InBg = 1;        %Determining the  Indoor set Fuzzy MF BIG
+
+
+        constructors fuzzycontroller(S1, S2)
+            {
+                 OSs = S1;
+                 INs = S2;
+                 OSm<1> = 0;
+                 OMe<1> = 0;
+                 OBg<1> = 0;
+                 InSm<1> = 0;
+                 InMe<1> = 0;
+                 InBg<1> = 0;
+	     }
+
+}
+
+class system
+{
+  attributes
+     plant P;
+     pidcontroller C;
+     real Dvalue;
+     lamp Lg;
+     sensor Ts,LOt,LIn;   %Three sensors Ts-Temperature, LOt-Ldr Outside sensor, LIn-Ldr Inside sensor for Light
+     fuzzycontroller Fc;
+
+  constraints
+
+                %Conditions for regulating AC temperature
+     P.Temp = C.Out;
+     C.Error`+ Ts.Output=Dvalue;
+     dump(P.Temp[Time]);
+
+                %Conditions for Brigtness of bulb
+             %for DIM
+                  Fc.OSm > Fc.OMe & Fc.InSm > Fc.InMe --> Lg.L = 'DIM';
+
+             %for DIMLESS
+                  Fc.OSm < Fc.OMe & Fc.InSm > Fc.InMe --> Lg.L = 'DIMLESS';
+                  Fc.OSm > Fc.OMe & Fc.InSm < Fc.InMe --> Lg.L = 'DIMLESS';
+
+             %for MEDIUM
+	          Fc.OMe < Fc.OBg & Fc.InSm > Fc.InMe --> Lg.L = 'MEDIUM';
+	          Fc.OMe > Fc.OBg & Fc.InSm < Fc.InMe --> Lg.L = 'MEDIUM';
+	          Fc.OMe < Fc.OSm & Fc.InBg > Fc.InMe --> Lg.L = 'MEDIUM';
+
+             %for LIGHTLESS
+                  Fc.OBg < Fc.OMe & Fc.InBg > Fc.InMe --> Lg.L = 'LIGHTLESS';
+                  Fc.OBg > Fc.OMe & Fc.InBg < Fc.InMe --> Lg.L = 'LIGHTLESS';
+
+             %for BRIGHT
+                  Fc.OBg > Fc.OMe & Fc.InBg > Fc.InMe --> Lg.L = 'BRIGHT';
+		 dump(`LOt.Output);
+		 dump(`LIn.Output);
+		 dump(Lg.L);
+		 dump(Lg.Lux);
+   predicates
+    dump(X):- write(X),nl.
+  constructor system()
+    {
+         %AC
+     P= new plant(-32.11,0.75,13.80,3.88,28,18);     %Calulated values for Heat gains for various parameter and RoomTemperature and Ac temperature
+     C= new pidcontroller(1,2.5,1);
+     Ts= new tempsensor(P);
+     Dvalue = 1;
+
+     %LIGHT
+     Lg = new lamp();
+     LOt = new ldrsensor(4.95);
+     LIn = new ldrsensor(3.98);
+     Fc = new fuzzycontroller(LOt,LIn);
+
+    }
+}
+
+$
+
+Compile
+
+?- tcob2swi('allcontrol.tcob','system()').
+
+Load
+
+?- [allcontrol].
+
+Run
+
+?- main(_,_).
+or if debug = yes
+? - main(_,_,_).

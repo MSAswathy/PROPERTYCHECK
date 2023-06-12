@@ -1,0 +1,16 @@
+Time = 1: Obj = Train: Var = S: Val = 1
+Time = 1: Obj = Cont: Var = S: Val = S0
+Time = 1: Obj = Gate: Var = S: Val = S0
+Time = 2: Obj = Train: Var = S: Val = 1
+Time = 2: Obj = Cont: Var = S: Val = S0
+Time = 2: Obj = Gate: Var = S: Val = S0
+Time = 3: Obj = Train: Var = S: Val = 1
+Time = 3: Obj = Cont: Var = S: Val = S1
+Time = 3: Obj = Gate: Var = S: Val = S0
+Time = 4: Obj = Train: Var = S: Val = 1
+Time = 4: Obj = Cont: Var = S: Val = S2
+Time = 4: Obj = Gate: Var = S: Val = S1
+Time = 4: Obj = Train: Var = S: Val = S1
+Time = 5: Obj = Train: Var = S: Val = 1
+Time = 5: Obj = Cont: Var = S: Val = NaV
+Time = 5: Obj = Gate: Var = S: Val = S2.
