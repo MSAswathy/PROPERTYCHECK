@@ -193,7 +193,7 @@ last([H|T],R):- last(T,R).
 
 
 %--to run
-%---[propertyparser].
+%---[propertyparser1].
 %---getproperty('G < Cont=>T=S0 >').
 %---getproperty('G < Train=>S=1 >').
 %---getproperty('G < Cont=>S=S0 >').
