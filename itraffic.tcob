@@ -1,0 +1,62 @@
+{simulation_start= 2, simulation_end =25,debug=yes}
+
+class trafficsensor{
+ attributes
+	series real V;
+ constraints
+	random(0,5,V);
+ constructors
+	trafficsensor(){}
+}
+
+class trafficlight{
+ attributes
+     enum Color;
+     series Color C;
+     trafficsensor Ts;
+     trafficlight Tl;
+     series int Total;
+ constraints
+
+      C='green' --> Total=0;
+      %Add up number vehicle if light is not green
+      not(C='green') --> Total=`Total+Ts.V;
+
+      %Keep green light based on number of vehicles
+     `C='red' & C='yellow' & Total>0 --> G<1,Total*5>C='green' & F<Total*5>C='yellow';
+    % `C='red' & C='yellow' & Total>0 --> F<Total*5>C='yellow';
+
+     %keep green,if no traffic on other road
+     `C='green' & C='yellow' & Tl.Total=0 --> G<1,Total*5>C='green';
+     `C='green' & C='yellow' & Tl.Total=0 --> F<Total*5>C='yellow';
+
+
+      %synchronization constraint
+      Tl.C='yellow' -->C='yellow';
+      Tl.C='green' -->C='red';
+
+ constructors trafficlight(C1,C2,TL){
+    Color=['red','green','yellow'];
+    Tl=TL;
+    Ts=new trafficsensor();
+    C<1> = C1; 
+    C<2> = C2;
+    Total<2> = Ts.V<2>;
+ }
+ monitor C;
+}
+
+class system{
+    attributes
+        trafficlight NS,EW;
+    constraints
+        writeln(NS.C[Time]);
+    constructor system(){
+        NS=new trafficlight('red','yellow',EW);
+        EW=new trafficlight('green','yellow',NS);
+    }
+}
+$
+?- tcob2swi('itraffic.tcob','system()').
+?- [itraffic].
+?- main(_,_).
