@@ -1,6 +1,6 @@
 getproperty(In):-
     string_to_list(In,L),tokenize(L,L1),write(L1),
-    getobject('log3sample.txt',ObjList),getStateList('log5sample.txt',StList,TimeList),
+    getobject('log3sample.txt',ObjList),getStateList('log4sample.txt',StList,TimeList),
     (prop_check(L1,ObjList,StList,TimeList) -> nl,print('Property VERIFIED AND ITS TRUE '); nl,print('Property VERIFIED AND ITS FALSE:- Invalid syntax or Property is negative')).
 %---------------------------------------------------------------------------------------
 getobject(File,ObjList) :-
@@ -64,6 +64,9 @@ special('~',[126|L],L).
 special('&',[38|L],L).
 special('|',[124|L],L).
 special('-->',[45,45,62|L],L).
+%special('[',[91|L],L).
+%special(']',[93|L],L).
+
 
 identifier(id(N)) --> 
    ident(L), {name(N,L)}.
@@ -99,8 +102,8 @@ keyword('G').
 keyword('F').
 
 %tagsforproperty
-begintag(<).
-endtag(>).
+begintag('[').
+endtag(']').
 logop('&').
 logop('|').
 logop('-->').
@@ -189,7 +192,7 @@ prop_check([X,Y|T],OL,SL,TL):- keyword(X),Y=id(BT),begintag(BT),last(T,ET),ET=id
                                 (X='G' -> T=[T1|Rest],T1=id(Ee),keyword(Ee), prop_f([Ee|Rest],OL,SL,TL,State,Final),
                                  traverseallstatechk(State,Final); 
                                 !,write('Invalid Property')).
-prop_check([X,Y|T],OL,SL,TL):- keyword(X),Y=id(BT),begintag(BT),I=id(-->),memberchk(I,T),
+prop_check([X,Y|T],OL,SL,TL):- keyword(X),Y=id(BT),begintag(BT),last(T,ET),ET=id(E),endtag(E),I=id(-->),memberchk(I,T),
                                  prop_checkforimplies([X|T],OL,SL,TL).
 
 %-------------------negation with & symbol-----------------------------
@@ -278,15 +281,15 @@ removelast([PossiblyLast|R],[NotLast|S],NotLast) :-
 
 %--to run
 %---[propertyparser5].
-%---getproperty('G  < NS=>C=red >'). True for log1sample.txt
-%---getproperty('g  < NS=>C=red >'). 'Property VERIFIED AND ITS FALSE:- Invalid syntax or Property is negative'
-%---getproperty('F  < NS=>C=red >'). True for log1sample.txt
-%---getproperty('F  < NS=>C=green >').  True for log1sample.txt
-%---getproperty('f  < NS=>C=green >').   Bad syntax
-%---getproperty('G ~ < < NS=>C=green  > & < EW=>C=green  > >'). False for log2sample.txt
-%---getproperty('G ~ < < NS=>C=green  > & < EW=>C=green  > >'). True for log3sample.txt
-%---getproperty('g ~ < < NS=>C=green  > & < EW=>C=green  > >'). syntax Error
-%---getproperty('G ~ < < NS=>C=green  > & < EW=>C=green  > '). Syntax error
-%---getproperty('G  < NS=>C=red --> F  NS=>C=green > '). True for log4sample.txt
-%---getproperty('G  < NS=>C=green --> F  NS=>C=red > '). True for log4sample.txt
-%---getproperty('G  < F  NS=>C=green  > '). True for log5sample.txt
+%---getproperty('G  [ NS=>C=red ]'). True for log1sample.txt
+%---getproperty('g  [ NS=>C=red ]'). 'Property VERIFIED AND ITS FALSE:- Invalid syntax or Property is negative'
+%---getproperty('F  [ NS=>C=red ]'). True for log1sample.txt
+%---getproperty('F  [ NS=>C=green ]').  True for log1sample.txt
+%---getproperty('f  [ NS=>C=green ]').   Bad syntax
+%---getproperty('G ~ [ [ NS=>C=green  ] & [ EW=>C=green  ] ]'). False for log2sample.txt
+%---getproperty('G ~ [ [ NS=>C=green  ] & [ EW=>C=green  ] ]'). True for log3sample.txt
+%---getproperty('g ~ [ [ NS=>C=green  ] & [ EW=>C=green  ] ]'). syntax Error
+%---getproperty('G ~ [ [ NS=>C=green  ] & [ EW=>C=green  ] '). Syntax error
+%---getproperty('G  [ NS=>C=red --> F  NS=>C=green ] '). True for log4sample.txt
+%---getproperty('G  [ NS=>C=green --> F  NS=>C=red ] '). True for log4sample.txt
+%---getproperty('G  [ F  NS=>C=green  ] '). True for log5sample.txt
